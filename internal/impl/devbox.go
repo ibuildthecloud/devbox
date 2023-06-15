@@ -425,17 +425,26 @@ func (d *Devbox) GenerateDevcontainer(force bool) error {
 // GenerateDockerfile generates a Dockerfile that replicates the devbox shell
 func (d *Devbox) GenerateDockerfile(force bool) error {
 	dockerfilePath := filepath.Join(d.projectDir, "Dockerfile")
+	dockerignorePath := filepath.Join(d.projectDir, ".dockerignore")
 	// check if Dockerfile doesn't exist
-	filesExist := fileutil.Exists(dockerfilePath)
-	if !force && filesExist {
+	dockerfileExist := fileutil.Exists(dockerfilePath)
+	dockerignoreExists := fileutil.Exists(dockerignorePath)
+	if !force && (dockerfileExist || dockerignoreExists) {
 		return usererr.New(
-			"Dockerfile is already present in the current directory. " +
-				"Remove it or use --force to overwrite it.",
+			"Dockerfile/.dockerignore are already present in the current directory. " +
+				"Remove them or use --force to overwrite them.",
 		)
 	}
 
 	// generate dockerfile
-	return errors.WithStack(generate.CreateDockerfile(tmplFS, d.projectDir, d.getLocalFlakesDirs(), false /* isDevcontainer */))
+	return errors.WithStack(
+		generate.CreateDockerfile(
+			tmplFS,
+			d.projectDir,
+			d.getLocalFlakesDirs(),
+			false, /* isDevcontainer */
+		),
+	)
 }
 
 func PrintEnvrcContent(w io.Writer) error {

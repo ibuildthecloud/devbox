@@ -41,7 +41,8 @@ type dockerfileData struct {
 	LocalFlakeDirs []string
 }
 
-// CreateDockerfile creates a Dockerfile in path and writes devcontainerDockerfile.tmpl's content into it
+// CreateDockerfile creates a Dockerfile in path and writes devcontainerDockerfile.tmpl's content into it.
+// It also creates a .dockerignore if isDevcontainer=false
 func CreateDockerfile(tmplFS embed.FS, path string, localFlakeDirs []string, isDevcontainer bool) error {
 	// create dockerfile
 	file, err := os.Create(filepath.Join(path, "Dockerfile"))
@@ -53,10 +54,28 @@ func CreateDockerfile(tmplFS embed.FS, path string, localFlakeDirs []string, isD
 	tmplName := "devcontainerDockerfile.tmpl"
 	t := template.Must(template.ParseFS(tmplFS, "tmpl/"+tmplName))
 	// write content into file
-	return t.Execute(file, &dockerfileData{
+	err = t.Execute(file, &dockerfileData{
 		IsDevcontainer: isDevcontainer,
 		LocalFlakeDirs: localFlakeDirs,
 	})
+	if err != nil {
+		return err
+	}
+
+	// create .dockerignore
+	if !isDevcontainer {
+		file, err := os.Create(filepath.Join(path, ".dockerignore"))
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		// get dockerignore content
+		tmplName := "dockerignore.tmpl"
+		t := template.Must(template.ParseFS(tmplFS, "tmpl/"+tmplName))
+		// write content into file
+		return t.Execute(file, nil)
+	}
+	return nil
 }
 
 // CreateDevcontainer creates a devcontainer.json in path and writes getDevcontainerContent's output into it
